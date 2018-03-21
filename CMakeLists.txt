@@ -31,6 +31,7 @@ find_package(Threads REQUIRED)
 
 add_executable(${PROJECT_NAME} src/main.cpp
                                src/orb/extractor.cpp
+                               src/orb/extra.cpp
               )
 
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT}

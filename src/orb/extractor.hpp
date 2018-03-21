@@ -1,10 +1,8 @@
 #ifndef EXTRACTOR_H
 #define EXTRACTOR_H
 
-#include <vector>
-#include <list>
-#include <opencv/cv.h>
-
+#include "includes.ihh"
+#include "extra.hpp"
 
 namespace orb
 {
@@ -26,12 +24,26 @@ class extractor
 {
 public:
     
-    enum {HARRIS_SCORE=0, FAST_SCORE=1 };
+    ///@brief orb methods to detect features
+    enum { 
+        HARRIS_SCORE=0, 
+        FAST_SCORE=1  //faster but more inaccurate 
+    };
 
-    extractor(int nfeatures, float scaleFactor, int nlevels,
-              int iniThFAST, int minThFAST);
 
-    ~extractor(){}
+    /**
+     * @brief Constructor 
+     * @param nfeatures Number of maximum features to look for
+     * @param scaleFactor Pyramid decimation ratio 
+     * @param nlevels Number of levels for the pyramid 
+     * @param iniThFAST
+     * @param minThFAST
+     */
+    extractor(int nfeatures, 
+              float scaleFactor, 
+              int nlevels,
+              int iniThFAST, 
+              int minThFAST);
 
     // Compute the ORB features and descriptors on an image.
     // ORB are dispersed on the image using an octree.
@@ -41,10 +53,10 @@ public:
       cv::OutputArray descriptors);
 
     int inline GetLevels(){
-        return nlevels;}
+        return nlevels_;}
 
     float inline GetScaleFactor(){
-        return scaleFactor;}
+        return scalefactor_;}
 
     std::vector<float> inline GetScaleFactors(){
         return mvScaleFactor;
@@ -73,11 +85,11 @@ protected:
 
     std::vector<cv::Point> pattern;
 
-    int nfeatures;
-    double scaleFactor;
-    int nlevels;
-    int iniThFAST;
-    int minThFAST;
+    int nfeatures_;
+    double scalefactor_;
+    int nlevels_;
+    int iniThFAST_;
+    int minThFAST_;
 
     std::vector<int> mnFeaturesPerLevel;
 
