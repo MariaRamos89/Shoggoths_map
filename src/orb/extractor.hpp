@@ -7,18 +7,21 @@
 namespace orb
 {
 
-//class ExtractorNode
-//{
-//public:
-//    ExtractorNode():bNoMore(false){}
-//
-//    void DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNode &n3, ExtractorNode &n4);
-//
-//    std::vector<cv::KeyPoint> vKeys;
-//    cv::Point2i UL, UR, BL, BR;
-//    std::list<ExtractorNode>::iterator lit;
-//    bool bNoMore;
-//};
+class ExtractorNode
+{
+public:
+    ExtractorNode():bNoMore(false){}
+
+    void DivideNode(ExtractorNode &n1, 
+                    ExtractorNode &n2, 
+                    ExtractorNode &n3, 
+                    ExtractorNode &n4);
+
+    std::vector<cv::KeyPoint> vKeys;
+    cv::Point2i UL, UR, BL, BR;
+    std::list<ExtractorNode>::iterator lit;
+    bool bNoMore;
+};
 
 class extractor
 {
@@ -48,9 +51,10 @@ public:
     // Compute the ORB features and descriptors on an image.
     // ORB are dispersed on the image using an octree.
     // Mask is ignored in the current implementation.
-    void operator()( cv::InputArray image, cv::InputArray mask,
-      std::vector<cv::KeyPoint>& keypoints,
-      cv::OutputArray descriptors);
+    void operator()( cv::InputArray image, 
+                     cv::InputArray mask,
+                     std::vector<cv::KeyPoint>& keypoints,
+                     cv::OutputArray descriptors);
 
     int inline GetLevels(){
         return nlevels_;}
@@ -59,19 +63,20 @@ public:
         return scalefactor_;}
 
     std::vector<float> inline GetScaleFactors(){
-        return mvScaleFactor;
+        return vec_scalefactor_;
     }
 
     std::vector<float> inline GetInverseScaleFactors(){
-        return mvInvScaleFactor;
+        return vec_inv_scalefactor_;
+
     }
 
     std::vector<float> inline GetScaleSigmaSquares(){
-        return mvLevelSigma2;
+        return vec_sigma2_;
     }
 
     std::vector<float> inline GetInverseScaleSigmaSquares(){
-        return mvInvLevelSigma2;
+        return vec_inv_sigma2_;
     }
 
     std::vector<cv::Mat> mvImagePyramid;
@@ -83,7 +88,7 @@ protected:
     std::vector<cv::KeyPoint> DistributeOctTree(const std::vector<cv::KeyPoint>& vToDistributeKeys, const int &minX,
                                            const int &maxX, const int &minY, const int &maxY, const int &nFeatures, const int &level);
 
-    std::vector<cv::Point> pattern;
+    std::vector<cv::Point> pattern_;
 
     int nfeatures_;
     double scalefactor_;
@@ -91,14 +96,26 @@ protected:
     int iniThFAST_;
     int minThFAST_;
 
-    std::vector<int> mnFeaturesPerLevel;
+    std::vector<int> features_per_level_;
 
-    std::vector<int> umax;
+    std::vector<int> umax_;
 
-    std::vector<float> mvScaleFactor;
-    std::vector<float> mvInvScaleFactor;    
-    std::vector<float> mvLevelSigma2;
-    std::vector<float> mvInvLevelSigma2;
+    std::vector<float> vec_scalefactor_;
+    std::vector<float> vec_inv_scalefactor_;    
+    std::vector<float> vec_sigma2_;
+    std::vector<float> vec_inv_sigma2_;
+
+private: 
+
+    ///@brief Init the scale factor variables 
+    void init_scale_factors();
+
+    ///@brief Init number of features per level
+    void init_features_level();
+
+    ///@brief Init vector umax
+    void init_umax();
+
 };
 
 } //namespace orb

@@ -39,6 +39,29 @@ struct compute_descriptor
                     uchar* desc);
 };
 
+/**
+ * @struct compute_all_descriptor
+ * @brief Compute the all descriptors 
+ */
+struct compute_all_descriptors
+{
+    ///@brief operator to compute the descriptor of a keypoint
+    void operator()(const cv::Mat& image, 
+                    std::vector<cv::KeyPoint>& keypoints, 
+                    cv::Mat& descriptors,
+                    const std::vector<cv::Point>& pattern);
+
+};
+/**
+ * @struct compute_orientation
+ * @brief Compute the orientation of a keypoint using @see ic_angle
+ */
+struct compute_orientation
+{
+    void operator()(const cv::Mat& image, 
+                    std::vector<cv::KeyPoint>& keypoints, 
+                    const std::vector<int>& umax);
+};
 }
 
 #endif

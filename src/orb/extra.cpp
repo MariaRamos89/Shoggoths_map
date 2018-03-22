@@ -79,6 +79,27 @@ void compute_descriptor::operator()(const cv::KeyPoint& kpt,
     #undef GET_VALUE
 }
 
+void compute_all_descriptors::operator()(const cv::Mat& image, 
+                                         std::vector<cv::KeyPoint>& keypoints, 
+                                         cv::Mat& descriptors,
+                                         const std::vector<cv::Point>& pattern)
+{
+    descriptors = cv::Mat::zeros((int)keypoints.size(), 32, CV_8UC1);
 
+    for (size_t i = 0; i < keypoints.size(); i++)
+        compute_descriptor()(keypoints[i], image, &pattern[0], descriptors.ptr((int)i));
+
+}
+
+void compute_orientation::operator()(const cv::Mat& image, 
+                                     std::vector<cv::KeyPoint>& keypoints, 
+                                     const std::vector<int>& umax)
+{
+    for (std::vector<cv::KeyPoint>::iterator keypoint = keypoints.begin(),
+         keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint)
+    {
+        keypoint->angle = ic_angle()(image, keypoint->pt, umax);
+    }
+}
 
 }

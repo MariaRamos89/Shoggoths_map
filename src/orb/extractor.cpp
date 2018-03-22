@@ -275,73 +275,80 @@ extractor::extractor(int nfeatures,
     iniThFAST_(iniThFAST), 
     minThFAST_(minThFAST)
 {
-    mvScaleFactor.resize(nlevels);
-    mvLevelSigma2.resize(nlevels);
-    mvScaleFactor[0]=1.0f;
-    mvLevelSigma2[0]=1.0f;
-    for(int i=1; i<nlevels; i++)
-    {
-        mvScaleFactor[i]=mvScaleFactor[i-1]*scalefactor;
-        mvLevelSigma2[i]=mvScaleFactor[i]*mvScaleFactor[i];
-    }
+    init_scale_factors();
+    init_features_level();
 
-    mvInvScaleFactor.resize(nlevels);
-    mvInvLevelSigma2.resize(nlevels);
-    for(int i=0; i<nlevels; i++)
-    {
-        mvInvScaleFactor[i]=1.0f/mvScaleFactor[i];
-        mvInvLevelSigma2[i]=1.0f/mvLevelSigma2[i];
-    }
-
-    mvImagePyramid.resize(nlevels);
-
-    mnFeaturesPerLevel.resize(nlevels);
-    float factor = 1.0f / scalefactor;
-    float nDesiredFeaturesPerScale = nfeatures*(1 - factor)/(1 - (float)pow((double)factor, (double)nlevels));
-
-    int sumFeatures = 0;
-    for( int level = 0; level < nlevels-1; level++ )
-    {
-        mnFeaturesPerLevel[level] = cvRound(nDesiredFeaturesPerScale);
-        sumFeatures += mnFeaturesPerLevel[level];
-        nDesiredFeaturesPerScale *= factor;
-    }
-    mnFeaturesPerLevel[nlevels-1] = std::max(nfeatures - sumFeatures, 0);
+    mvImagePyramid.resize(nlevels_);
 
     const int npoints = 512;
-    const cv::Point* pattern0 = (const cv::Point*)bit_pattern_31_;
-    std::copy(pattern0, pattern0 + npoints, std::back_inserter(pattern));
+    const cv::Point* pattern_0 = (const cv::Point*)bit_pattern_31_;
+    std::copy(pattern_0, pattern_0 + npoints, std::back_inserter(pattern_));
 
+    init_umax();
+}
+
+void extractor::init_scale_factors()
+{
+    vec_scalefactor_.resize(nlevels_);
+    vec_sigma2_.resize(nlevels_);
+    vec_inv_scalefactor_.resize(nlevels_);
+    vec_inv_sigma2_.resize(nlevels_);
+
+    vec_scalefactor_[0]=1.0f;
+    vec_sigma2_[0]=1.0f;
+    for(int i = 1; i < nlevels_; i++)
+    {
+        vec_scalefactor_[i]=vec_scalefactor_[i-1]*scalefactor_;
+        vec_sigma2_[i]=vec_scalefactor_[i]*vec_scalefactor_[i];
+    }
+
+    for(int i = 0; i < nlevels_; i++)
+    {
+        vec_inv_scalefactor_[i]=1.0f/vec_scalefactor_[i];
+        vec_inv_sigma2_[i]=1.0f/vec_sigma2_[i];
+    }
+
+}
+
+void extractor::init_features_level()
+{
+    features_per_level_.resize(nlevels_);
+    float factor = 1.0f / scalefactor_;
+    float features_per_scale = nfeatures_ * (1 - factor) / (1 - (float)pow((double)factor, (double)nlevels_));
+
+    int total_features = 0;
+    for( int level = 0; level < nlevels_-1; level++ )
+    {
+        features_per_level_[level] = cvRound(features_per_scale);
+        total_features += features_per_level_[level];
+        features_per_scale *= factor;
+    }
+    features_per_level_[nlevels_-1] = std::max(nfeatures_ - total_features, 0);
+
+}
+
+void extractor::init_umax()
+{
     //This is for orientation
     // pre-compute the end of a row in a circular patch
-    umax.resize(constants::HALF_PATCH_SIZE + 1);
+    umax_.resize(constants::HALF_PATCH_SIZE + 1);
 
-    int v, v0, vmax = cvFloor(constants::HALF_PATCH_SIZE * sqrt(2.f) / 2 + 1);
+    int vmax = cvFloor(constants::HALF_PATCH_SIZE * sqrt(2.f) / 2 + 1);
     int vmin = cvCeil(constants::HALF_PATCH_SIZE * sqrt(2.f) / 2);
     const double hp2 = constants::HALF_PATCH_SIZE*constants::HALF_PATCH_SIZE;
-    for (v = 0; v <= vmax; ++v)
-        umax[v] = cvRound(sqrt(hp2 - v * v));
+    for (int v = 0; v <= vmax; ++v)
+        umax_[v] = cvRound(sqrt(hp2 - v * v));
 
     // Make sure we are symmetric
-    for (v = constants::HALF_PATCH_SIZE, v0 = 0; v >= vmin; --v)
+    for (int v = constants::HALF_PATCH_SIZE, v0 = 0; v >= vmin; --v)
     {
-        while (umax[v0] == umax[v0 + 1])
+        while (umax_[v0] == umax_[v0 + 1])
             ++v0;
-        umax[v] = v0;
+        umax_[v] = v0;
         ++v0;
     }
 }
 
-static void computeOrientation(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, const std::vector<int>& umax)
-{
-    for (std::vector<cv::KeyPoint>::iterator keypoint = keypoints.begin(),
-         keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint)
-    {
-        keypoint->angle = ic_angle()(image, keypoint->pt, umax);
-    }
-}
-
-/*
 void ExtractorNode::DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNode &n3, ExtractorNode &n4)
 {
     const int halfX = ceil(static_cast<float>(UR.x-UL.x)/2);
@@ -375,7 +382,7 @@ void ExtractorNode::DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNo
     //Associate points to childs
     for(size_t i=0;i<vKeys.size();i++)
     {
-        const cv::cv::KeyPoint &kp = vKeys[i];
+        const cv::KeyPoint &kp = vKeys[i];
         if(kp.pt.x<n1.UR.x)
         {
             if(kp.pt.y<n1.BR.y)
@@ -399,7 +406,7 @@ void ExtractorNode::DivideNode(ExtractorNode &n1, ExtractorNode &n2, ExtractorNo
         n4.bNoMore = true;
 
 }
-*/
+
 std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::KeyPoint>& vToDistributeKeys, const int &minX,
                                        const int &maxX, const int &minY, const int &maxY, const int &N, const int &level)
 {
@@ -408,7 +415,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
 
     const float hX = static_cast<float>(maxX-minX)/nIni;
 
-    list<ExtractorNode> lNodes;
+    std::list<ExtractorNode> lNodes;
 
     std::vector<ExtractorNode*> vpIniNodes;
     vpIniNodes.resize(nIni);
@@ -429,11 +436,11 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
     //Associate points to childs
     for(size_t i=0;i<vToDistributeKeys.size();i++)
     {
-        const cv::cv::KeyPoint &kp = vToDistributeKeys[i];
+        const cv::KeyPoint &kp = vToDistributeKeys[i];
         vpIniNodes[kp.pt.x/hX]->vKeys.push_back(kp);
     }
 
-    list<ExtractorNode>::iterator lit = lNodes.begin();
+    std::list<ExtractorNode>::iterator lit = lNodes.begin();
 
     while(lit!=lNodes.end())
     {
@@ -452,7 +459,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
 
     int iteration = 0;
 
-    std::vector<pair<int,ExtractorNode*> > vSizeAndPointerToNode;
+    std::vector<std::pair<int,ExtractorNode*> > vSizeAndPointerToNode;
     vSizeAndPointerToNode.reserve(lNodes.size()*4);
 
     while(!bFinish)
@@ -488,7 +495,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
                     if(n1.vKeys.size()>1)
                     {
                         nToExpand++;
-                        vSizeAndPointerToNode.push_back(make_pair(n1.vKeys.size(),&lNodes.front()));
+                        vSizeAndPointerToNode.push_back(std::make_pair(n1.vKeys.size(),&lNodes.front()));
                         lNodes.front().lit = lNodes.begin();
                     }
                 }
@@ -498,7 +505,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
                     if(n2.vKeys.size()>1)
                     {
                         nToExpand++;
-                        vSizeAndPointerToNode.push_back(make_pair(n2.vKeys.size(),&lNodes.front()));
+                        vSizeAndPointerToNode.push_back(std::make_pair(n2.vKeys.size(),&lNodes.front()));
                         lNodes.front().lit = lNodes.begin();
                     }
                 }
@@ -508,7 +515,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
                     if(n3.vKeys.size()>1)
                     {
                         nToExpand++;
-                        vSizeAndPointerToNode.push_back(make_pair(n3.vKeys.size(),&lNodes.front()));
+                        vSizeAndPointerToNode.push_back(std::make_pair(n3.vKeys.size(),&lNodes.front()));
                         lNodes.front().lit = lNodes.begin();
                     }
                 }
@@ -518,7 +525,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
                     if(n4.vKeys.size()>1)
                     {
                         nToExpand++;
-                        vSizeAndPointerToNode.push_back(make_pair(n4.vKeys.size(),&lNodes.front()));
+                        vSizeAndPointerToNode.push_back(std::make_pair(n4.vKeys.size(),&lNodes.front()));
                         lNodes.front().lit = lNodes.begin();
                     }
                 }
@@ -542,10 +549,10 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
 
                 prevSize = lNodes.size();
 
-                std::vector<pair<int,ExtractorNode*> > vPrevSizeAndPointerToNode = vSizeAndPointerToNode;
+                std::vector<std::pair<int,ExtractorNode*> > vPrevSizeAndPointerToNode = vSizeAndPointerToNode;
                 vSizeAndPointerToNode.clear();
 
-                sort(vPrevSizeAndPointerToNode.begin(),vPrevSizeAndPointerToNode.end());
+                std::sort(vPrevSizeAndPointerToNode.begin(),vPrevSizeAndPointerToNode.end());
                 for(int j=vPrevSizeAndPointerToNode.size()-1;j>=0;j--)
                 {
                     ExtractorNode n1,n2,n3,n4;
@@ -557,7 +564,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
                         lNodes.push_front(n1);
                         if(n1.vKeys.size()>1)
                         {
-                            vSizeAndPointerToNode.push_back(make_pair(n1.vKeys.size(),&lNodes.front()));
+                            vSizeAndPointerToNode.push_back(std::make_pair(n1.vKeys.size(),&lNodes.front()));
                             lNodes.front().lit = lNodes.begin();
                         }
                     }
@@ -566,7 +573,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
                         lNodes.push_front(n2);
                         if(n2.vKeys.size()>1)
                         {
-                            vSizeAndPointerToNode.push_back(make_pair(n2.vKeys.size(),&lNodes.front()));
+                            vSizeAndPointerToNode.push_back(std::make_pair(n2.vKeys.size(),&lNodes.front()));
                             lNodes.front().lit = lNodes.begin();
                         }
                     }
@@ -575,7 +582,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
                         lNodes.push_front(n3);
                         if(n3.vKeys.size()>1)
                         {
-                            vSizeAndPointerToNode.push_back(make_pair(n3.vKeys.size(),&lNodes.front()));
+                            vSizeAndPointerToNode.push_back(std::make_pair(n3.vKeys.size(),&lNodes.front()));
                             lNodes.front().lit = lNodes.begin();
                         }
                     }
@@ -584,7 +591,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
                         lNodes.push_front(n4);
                         if(n4.vKeys.size()>1)
                         {
-                            vSizeAndPointerToNode.push_back(make_pair(n4.vKeys.size(),&lNodes.front()));
+                            vSizeAndPointerToNode.push_back(std::make_pair(n4.vKeys.size(),&lNodes.front()));
                             lNodes.front().lit = lNodes.begin();
                         }
                     }
@@ -603,7 +610,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
     }
 
     // Retain the best point in each node
-    std::vector<cv::cv::KeyPoint> vResultKeys;
+    std::vector<cv::KeyPoint> vResultKeys;
     vResultKeys.reserve(nfeatures_);
     for(std::list<ExtractorNode>::iterator lit=lNodes.begin(); lit!=lNodes.end(); lit++)
     {
@@ -626,7 +633,7 @@ std::vector<cv::KeyPoint> extractor::DistributeOctTree(const std::vector<cv::Key
     return vResultKeys;
 }
 
-void extractor::Computecv::KeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints)
+void extractor::ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints)
 {
     allKeypoints.resize(nlevels_);
 
@@ -696,9 +703,9 @@ void extractor::Computecv::KeyPointsOctTree(std::vector<std::vector<cv::KeyPoint
         keypoints.reserve(nfeatures_);
 
         keypoints = DistributeOctTree(vToDistributeKeys, minBorderX, maxBorderX,
-                                      minBorderY, maxBorderY,mnFeaturesPerLevel[level], level);
+                                      minBorderY, maxBorderY,features_per_level_[level], level);
 
-        const int scaledPatchSize = constants::PATCH_SIZE*mvScaleFactor[level];
+        const int scaledPatchSize = constants::PATCH_SIZE*vec_scalefactor_[level];
 
         // Add border to coordinates and scale information
         const int nkps = keypoints.size();
@@ -713,16 +720,7 @@ void extractor::Computecv::KeyPointsOctTree(std::vector<std::vector<cv::KeyPoint
 
     // compute orientations
     for (int level = 0; level < nlevels_; ++level)
-        computeOrientation(mvImagePyramid[level], allKeypoints[level], umax);
-}
-
-static void computeDescriptors(const cv::Mat& image, std::vector<cv::KeyPoint>& keypoints, cv::Mat& descriptors,
-                               const std::vector<cv::Point>& pattern)
-{
-    descriptors = cv::Mat::zeros((int)keypoints.size(), 32, CV_8UC1);
-
-    for (size_t i = 0; i < keypoints.size(); i++)
-        compute_descriptor()(keypoints[i], image, &pattern[0], descriptors.ptr((int)i));
+        compute_orientation()(mvImagePyramid[level], allKeypoints[level], umax_);
 }
 
 void extractor::operator()( cv::InputArray _image, cv::InputArray _mask, std::vector<cv::KeyPoint>& _keypoints,
@@ -772,14 +770,14 @@ void extractor::operator()( cv::InputArray _image, cv::InputArray _mask, std::ve
 
         // Compute the descriptors
         cv::Mat desc = descriptors.rowRange(offset, offset + nkeypointsLevel);
-        computeDescriptors(workingMat, keypoints, desc, pattern);
+        compute_all_descriptors()(workingMat, keypoints, desc, pattern_);
 
         offset += nkeypointsLevel;
 
         // Scale keypoint coordinates
         if (level != 0)
         {
-            float scale = mvScaleFactor[level]; //getScale(level, firstLevel, scalefactor);
+            float scale = vec_scalefactor_[level]; //getScale(level, firstLevel, scalefactor);
             for (std::vector<cv::KeyPoint>::iterator keypoint = keypoints.begin(),
                  keypointEnd = keypoints.end(); keypoint != keypointEnd; ++keypoint)
                 keypoint->pt *= scale;
@@ -793,7 +791,7 @@ void extractor::ComputePyramid(cv::Mat image)
 {
     for (int level = 0; level < nlevels_; ++level)
     {
-        float scale = mvInvScaleFactor[level];
+        float scale = vec_inv_scalefactor_[level];
         cv::Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
         cv::Size wholeSize(sz.width + constants::EDGE_THRESHOLD*2, sz.height + constants::EDGE_THRESHOLD*2);
         cv::Mat temp(wholeSize, image.type()), masktemp;
