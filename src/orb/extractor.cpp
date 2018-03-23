@@ -278,7 +278,7 @@ extractor::extractor(int nfeatures,
     init_scale_factors();
     init_features_level();
 
-    mvImagePyramid.resize(nlevels_);
+    image_pyramid.resize(nlevels_);
 
     const int npoints = 512;
     const cv::Point* pattern_0 = (const cv::Point*)bit_pattern_31_;
@@ -643,8 +643,8 @@ void extractor::ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >&
     {
         const int minBorderX = constants::EDGE_THRESHOLD-3;
         const int minBorderY = minBorderX;
-        const int maxBorderX = mvImagePyramid[level].cols-constants::EDGE_THRESHOLD+3;
-        const int maxBorderY = mvImagePyramid[level].rows-constants::EDGE_THRESHOLD+3;
+        const int maxBorderX = image_pyramid[level].cols-constants::EDGE_THRESHOLD+3;
+        const int maxBorderY = image_pyramid[level].rows-constants::EDGE_THRESHOLD+3;
 
         std::vector<cv::KeyPoint> vToDistributeKeys;
         vToDistributeKeys.reserve(nfeatures_*10);
@@ -677,12 +677,12 @@ void extractor::ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >&
                     maxX = maxBorderX;
 
                 std::vector<cv::KeyPoint> vKeysCell;
-                FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
+                FAST(image_pyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
                      vKeysCell,iniThFAST_,true);
 
                 if(vKeysCell.empty())
                 {
-                    FAST(mvImagePyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
+                    FAST(image_pyramid[level].rowRange(iniY,maxY).colRange(iniX,maxX),
                          vKeysCell,minThFAST_,true);
                 }
 
@@ -720,7 +720,7 @@ void extractor::ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >&
 
     // compute orientations
     for (int level = 0; level < nlevels_; ++level)
-        compute_orientation()(mvImagePyramid[level], allKeypoints[level], umax_);
+        compute_orientation()(image_pyramid[level], allKeypoints[level], umax_);
 }
 
 void extractor::operator()( cv::InputArray _image, cv::InputArray _mask, std::vector<cv::KeyPoint>& _keypoints,
@@ -765,7 +765,7 @@ void extractor::operator()( cv::InputArray _image, cv::InputArray _mask, std::ve
             continue;
 
         // preprocess the resized image
-        cv::Mat workingMat = mvImagePyramid[level].clone();
+        cv::Mat workingMat = image_pyramid[level].clone();
         GaussianBlur(workingMat, workingMat, cv::Size(7, 7), 2, 2, cv::BORDER_REFLECT_101);
 
         // Compute the descriptors
@@ -792,22 +792,31 @@ void extractor::ComputePyramid(cv::Mat image)
     for (int level = 0; level < nlevels_; ++level)
     {
         float scale = vec_inv_scalefactor_[level];
-        cv::Size sz(cvRound((float)image.cols*scale), cvRound((float)image.rows*scale));
-        cv::Size wholeSize(sz.width + constants::EDGE_THRESHOLD*2, sz.height + constants::EDGE_THRESHOLD*2);
-        cv::Mat temp(wholeSize, image.type()), masktemp;
-        mvImagePyramid[level] = temp(cv::Rect(constants::EDGE_THRESHOLD, constants::EDGE_THRESHOLD, sz.width, sz.height));
+        cv::Size sz(cvRound((float)image.cols * scale), cvRound((float)image.rows * scale));
+        cv::Size wholeSize(sz.width + constants::EDGE_THRESHOLD * 2, sz.height + constants::EDGE_THRESHOLD * 2);
+        cv::Mat temp(wholeSize, image.type());
+        image_pyramid[level] = temp(cv::Rect(constants::EDGE_THRESHOLD, constants::EDGE_THRESHOLD, sz.width, sz.height));
 
         // Compute the resized image
         if( level != 0 )
         {
-            resize(mvImagePyramid[level-1], mvImagePyramid[level], sz, 0, 0, cv::INTER_LINEAR);
-
-            copyMakeBorder(mvImagePyramid[level], temp, constants::EDGE_THRESHOLD, constants::EDGE_THRESHOLD, constants::EDGE_THRESHOLD, constants::EDGE_THRESHOLD,
-                           cv::BORDER_REFLECT_101+cv::BORDER_ISOLATED);            
+            resize(image_pyramid[level-1], image_pyramid[level], sz, 0, 0, cv::INTER_LINEAR);
+            copyMakeBorder(image_pyramid[level], 
+                           temp, 
+                           constants::EDGE_THRESHOLD, 
+                           constants::EDGE_THRESHOLD, 
+                           constants::EDGE_THRESHOLD, 
+                           constants::EDGE_THRESHOLD,
+                           cv::BORDER_REFLECT_101 + cv::BORDER_ISOLATED);            
         }
         else
         {
-            copyMakeBorder(image, temp, constants::EDGE_THRESHOLD, constants::EDGE_THRESHOLD, constants::EDGE_THRESHOLD, constants::EDGE_THRESHOLD,
+            copyMakeBorder(image, 
+                           temp, 
+                           constants::EDGE_THRESHOLD, 
+                           constants::EDGE_THRESHOLD, 
+                           constants::EDGE_THRESHOLD, 
+                           constants::EDGE_THRESHOLD,
                            cv::BORDER_REFLECT_101);            
         }
     }
