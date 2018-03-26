@@ -7,19 +7,24 @@
 namespace orb
 {
 
-class ExtractorNode
+class extractor_node
 {
 public:
-    ExtractorNode():bNoMore(false){}
+    ///@brief default constructor
+    extractor_node();
 
-    void DivideNode(ExtractorNode &n1, 
-                    ExtractorNode &n2, 
-                    ExtractorNode &n3, 
-                    ExtractorNode &n4);
+    ///@brief divide in 4 different child nodes
+    void DivideNode(extractor_node &n1, 
+                    extractor_node &n2, 
+                    extractor_node &n3, 
+                    extractor_node &n4);
+
+    /// @brief check if every node has at least one keypoint
+    void check_keypoints(std::list<extractor_node> & nodes);
 
     std::vector<cv::KeyPoint> vKeys;
     cv::Point2i UL, UR, BL, BR;
-    std::list<ExtractorNode>::iterator lit;
+    std::list<extractor_node>::iterator lit;
     bool bNoMore;
 };
 
@@ -48,48 +53,54 @@ public:
               int iniThFAST = 20, 
               int minThFAST = 7);
 
-    // Compute the ORB features and descriptors on an image.
-    // ORB are dispersed on the image using an octree.
-    // Mask is ignored in the current implementation.
+    /// @brief  Compute the ORB features and descriptors on an image.
+    /// ORB are dispersed on the image using an octree.
+    /// Mask is ignored in the current implementation.
     void operator()( cv::InputArray image, 
-                     cv::InputArray mask,
                      std::vector<cv::KeyPoint>& keypoints,
                      cv::OutputArray descriptors);
 
-    int inline GetLevels(){
-        return nlevels_;}
+    int get_levels();
 
-    float inline GetScaleFactor(){
-        return scalefactor_;}
+    float get_scalefactor();
 
-    std::vector<float> inline GetScaleFactors(){
-        return vec_scalefactor_;
-    }
+    std::vector<float> get_scalefactors();
 
-    std::vector<float> inline GetInverseScaleFactors(){
-        return vec_inv_scalefactor_;
+    std::vector<float> get_inv_scalefactors();
 
-    }
+    std::vector<float> get_sigma2();
 
-    std::vector<float> inline GetScaleSigmaSquares(){
-        return vec_sigma2_;
-    }
+    std::vector<float> get_inv_sigma2();
 
-    std::vector<float> inline GetInverseScaleSigmaSquares(){
-        return vec_inv_sigma2_;
-    }
-
+    ///@brief Vector of pyramid images
     std::vector<cv::Mat> image_pyramid;
 
+private: 
+    //@brief Init the scale factor variables 
+    void init_scale_factors();
 
-    void ComputePyramid(cv::Mat image);
-protected:
+    //@brief Init number of features per level
+    void init_features_level();
+
+    //@brief Init vector umax
+    void init_umax();
+
+    //@brief create a pyramid of nlevels with the same image resize by inv_scalefactor^number_of_level
+    void compute_pyramid(cv::Mat image);
+
     void ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);    
-    std::vector<cv::KeyPoint> DistributeOctTree(const std::vector<cv::KeyPoint>& vToDistributeKeys, const int &minX,
-                                           const int &maxX, const int &minY, const int &maxY, const int &nFeatures, const int &level);
+
+    std::vector<cv::KeyPoint> DistributeOctTree(const std::vector<cv::KeyPoint>& vToDistributeKeys, 
+                                                const int &minX,
+                                                const int &maxX, 
+                                                const int &minY, 
+                                                const int &maxY, 
+                                                const int &nFeatures, 
+                                                const int &level);
 
     std::vector<cv::Point> pattern_;
 
+    ///TODO: reduce the number of attributes
     int nfeatures_;
     double scalefactor_;
     int nlevels_;
@@ -105,16 +116,6 @@ protected:
     std::vector<float> vec_sigma2_;
     std::vector<float> vec_inv_sigma2_;
 
-private: 
-
-    ///@brief Init the scale factor variables 
-    void init_scale_factors();
-
-    ///@brief Init number of features per level
-    void init_features_level();
-
-    ///@brief Init vector umax
-    void init_umax();
 
 };
 
