@@ -26,6 +26,17 @@ message("Build directory: ${CMAKE_CURRENT_BINARY_DIR}")
 # include everything from "/includes"
 include_directories(".")
 
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    message(STATUS "Building: ${CMAKE_BUILD_TYPE}. Ommit flag to change to `Release`")
+else()
+    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -s -O3")
+    message(STATUS "Building: ${CMAKE_BUILD_TYPE}. Add flag `-DCMAKE_BUILD_TYPE=Debug` to switch to `Debug`")
+endif()
+
+
 find_package(OpenCV REQUIRED)
 find_package(Threads REQUIRED)
 

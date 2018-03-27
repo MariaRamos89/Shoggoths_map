@@ -14,18 +14,35 @@ public:
     extractor_node();
 
     ///@brief divide in 4 different child nodes
-    void DivideNode(extractor_node &n1, 
-                    extractor_node &n2, 
-                    extractor_node &n3, 
-                    extractor_node &n4);
+    void DivideNode(extractor_node & n1, 
+                    extractor_node & n2, 
+                    extractor_node & n3, 
+                    extractor_node & n4);
 
     /// @brief check if every node has at least one keypoint
     void check_keypoints(std::list<extractor_node> & nodes);
 
+    /// @brief subdivide a node if more that one keypoint in the same node
+    int subdivide(std::list<extractor_node> & nodes,
+                  std::vector<std::pair<int, extractor_node*>> & size_and_node);
+
+    ///attributes
     std::vector<cv::KeyPoint> vKeys;
     cv::Point2i UL, UR, BL, BR;
     std::list<extractor_node>::iterator lit;
     bool bNoMore;
+};
+
+
+/**
+ * @struct best_keypoints
+ * @brief Select the best keypoint per node
+ */
+struct best_keypoints
+{
+    ///@return a vector with a keypoint per node
+    std::vector<cv::KeyPoint> operator()(std::list<extractor_node> & nodes,
+                                         const int number_features);
 };
 
 class extractor
@@ -44,8 +61,8 @@ public:
      * @param nfeatures Number of maximum features to look for
      * @param scaleFactor Pyramid decimation ratio 
      * @param nlevels Number of levels for the pyramid 
-     * @param iniThFAST
-     * @param minThFAST
+     * @param iniThFAST Inital threshold size to find a keypoint
+     * @param minThFAST Minimum size of threshold to find a keypoint
      */
     extractor(int nfeatures = 2000, 
               float scaleFactor = 1.2, 
@@ -88,6 +105,11 @@ private:
     //@brief create a pyramid of nlevels with the same image resize by inv_scalefactor^number_of_level
     void compute_pyramid(cv::Mat image);
 
+    //@brief process and look for keypoints
+    void resized_keypoints(std::vector<std::vector<cv::KeyPoint>> & all_keypoints,
+                           std::vector<cv::KeyPoint> & keypoints,
+                           cv::Mat & mat_descriptors);
+
     void ComputeKeyPointsOctTree(std::vector<std::vector<cv::KeyPoint> >& allKeypoints);    
 
     std::vector<cv::KeyPoint> DistributeOctTree(const std::vector<cv::KeyPoint>& vToDistributeKeys, 
@@ -108,9 +130,7 @@ private:
     int minThFAST_;
 
     std::vector<int> features_per_level_;
-
     std::vector<int> umax_;
-
     std::vector<float> vec_scalefactor_;
     std::vector<float> vec_inv_scalefactor_;    
     std::vector<float> vec_sigma2_;
